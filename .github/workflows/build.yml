@@ -33,14 +33,14 @@ jobs:
           GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build -buildmode=c-shared -o cargo-arm64.so -v ./...
 
       - name: Upload Release Asset
-        if: github.repository == 'Vanilla-OS/vib-cargo'
+        if: github.repository == 'mauriciobraz/vib-cargo'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           files: cargo*.so
 
       - name: Attest Generated Files
-        if: github.repository == 'Vanilla-OS/vib-cargo'
+        if: github.repository == 'mauriciobraz/vib-cargo'
         id: attest
         uses: actions/attest-build-provenance@v2
         with:
