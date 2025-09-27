@@ -1,38 +1,47 @@
-name: Build
+name: Release
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # to upload assets to releases
+      attestations: write # to upload assets attestation for build provenance
+      id-token: write # grant additional permission to attestation action to mint the OIDC token permission
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version-file: go.mod
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
 
-    - name: Install Build Dependencies
-      run: |
-        sudo apt update
-        sudo apt install gcc-aarch64-linux-gnu
+      - name: Install Build Dependencies
+        run: |
+          sudo apt update
+          sudo apt install gcc-aarch64-linux-gnu
 
-    - name: Build
-      run: |
-        go get ./...
-        go build -trimpath -buildmode=plugin -o plugin-amd64.so -v ./...
-        GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build -trimpath -buildmode=plugin -o plugin-arm64.so -v ./...
+      - name: Build
+        run: |
+          go get ./...
+          go build -buildmode=c-shared -o cargo-amd64.so -v ./...
+          GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build -buildmode=c-shared -o cargo-arm64.so -v ./...
 
-    - name: Upload an artifact
-      uses: actions/upload-artifact@v4
-      with:
-        Name: Vib plugin
-        path: ./plugin.so
+      - name: Upload Release Asset
+        if: github.repository == 'Vanilla-OS/vib-cargo'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          files: cargo*.so
 
+      - name: Attest Generated Files
+        if: github.repository == 'Vanilla-OS/vib-cargo'
+        id: attest
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "cargo*.so"
