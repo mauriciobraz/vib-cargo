@@ -1,0 +1,38 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+
+    - name: Install Build Dependencies
+      run: |
+        sudo apt update
+        sudo apt install gcc-aarch64-linux-gnu
+
+    - name: Build
+      run: |
+        go get ./...
+        go build -trimpath -buildmode=plugin -o plugin-amd64.so -v ./...
+        GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build -trimpath -buildmode=plugin -o plugin-arm64.so -v ./...
+
+    - name: Upload an artifact
+      uses: actions/upload-artifact@v4
+      with:
+        Name: Vib plugin
+        path: ./plugin.so
+
