@@ -10,23 +10,27 @@ import (
 )
 
 type CargoModule struct {
-	Name   string     `json:"name"`
-	Type   string     `json:"type"`
-	Source api.Source `json:"source"`
+	Name    string       `json:"name"`
+	Type    string       `json:"type"`
+	Sources []api.Source `json:"sources"`
 
-	Release   bool `json:"release"`
-	NoDefault bool `json:"no-default"`
-
+	Release     bool     `json:"release"`
+	NoDefault   bool     `json:"no-default"`
 	InstallPath string   `json:"install-path"`
 	Features    []string `json:"features"`
 	BuildFlags  []string `json:"build-flags"`
 }
 
-func fetchSource(source api.Source, name string, recipe *api.Recipe) error {
-	if err := api.DownloadSource(recipe, source, name); err != nil {
-		return err
+func fetchSources(sources []api.Source, name string, recipe *api.Recipe) error {
+	for _, src := range sources {
+		if err := api.DownloadSource(recipe, src, name); err != nil {
+			return err
+		}
+		if err := api.MoveSource(recipe.DownloadsPath, recipe.SourcesPath, src, name); err != nil {
+			return err
+		}
 	}
-	return api.MoveSource(recipe.DownloadsPath, recipe.SourcesPath, source, name)
+	return nil
 }
 
 //export PlugInfo
@@ -56,15 +60,17 @@ func BuildModule(moduleInterface *C.char, recipeInterface *C.char, arch *C.char)
 		return C.CString(fmt.Sprintf("ERROR: %s", err.Error()))
 	}
 
-	if !api.TestArch(module.Source.OnlyArches, C.GoString(arch)) {
-		return C.CString("")
+	for _, src := range module.Sources {
+		if !api.TestArch(src.OnlyArches, C.GoString(arch)) {
+			return C.CString("")
+		}
 	}
 
-	if err := fetchSource(module.Source, module.Name, recipe); err != nil {
+	if err := fetchSources(module.Sources, module.Name, recipe); err != nil {
 		return C.CString(fmt.Sprintf("ERROR: %s", err.Error()))
 	}
 
-	workDir := fmt.Sprintf("/sources/%s", api.GetSourcePath(module.Source, module.Name))
+	workDir := fmt.Sprintf("/sources/%s", api.GetSourcePath(module.Sources[0], module.Name))
 	installPath := module.InstallPath
 	if installPath == "" {
 		installPath = "/usr/bin"
