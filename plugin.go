@@ -43,7 +43,7 @@ func (m *CargoModule) isRelease() bool {
 
 func (m *CargoModule) getBuildFlags() []string {
 	if len(m.BuildFlags) == 0 {
-		return []string{"--locked", "--verbose"}
+		return []string{"--locked"}
 	}
 
 	return m.BuildFlags
