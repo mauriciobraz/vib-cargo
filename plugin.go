@@ -121,7 +121,7 @@ func BuildModule(moduleInterface *C.char, recipeInterface *C.char, arch *C.char)
 	}
 
 	fullCmd := fmt.Sprintf(
-		`cd %s && if ! command -v cargo >/dev/null 2>&1; then echo 'installing rustup...' >&2 && curl https://sh.rustup.rs -sSf | sh -s -- -y && export PATH="$HOME/.cargo/bin:$PATH"; fi && export PATH="$HOME/.cargo/bin:$PATH" && %s`,
+		`cd %s && export PATH="$HOME/.cargo/bin:$PATH" && if ! command -v cargo >/dev/null 2>&1; then echo 'installing rustup...' >&2 && curl https://sh.rustup.rs -sSf | sh -s -- -y; fi && %s`,
 		workDir, cargoCmd,
 	)
 
