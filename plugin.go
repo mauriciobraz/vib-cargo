@@ -104,14 +104,10 @@ func BuildModule(moduleInterface *C.char, recipeInterface *C.char, arch *C.char)
 	}
 
 	workDir := fmt.Sprintf("/sources/%s", api.GetSourcePath(sources[0], module.Name))
-	installPath := module.InstallPath
-	if installPath == "" {
-		installPath = "/usr/bin"
-	}
 
-	cargoCmd := fmt.Sprintf("cargo install --path . --root %s", installPath)
-	if !module.isRelease() {
-		cargoCmd += " --debug"
+	cargoCmd := "cargo build"
+	if module.isRelease() {
+		cargoCmd += " --release"
 	}
 	if len(module.Features) > 0 {
 		cargoCmd += " --features " + strings.Join(module.Features, ",")
