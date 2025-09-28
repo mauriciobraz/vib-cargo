@@ -109,9 +109,9 @@ func BuildModule(moduleInterface *C.char, recipeInterface *C.char, arch *C.char)
 		installPath = "/usr/bin"
 	}
 
-	cargoCmd := "cargo build"
-	if module.isRelease() {
-		cargoCmd += " --release"
+	cargoCmd := fmt.Sprintf("cargo install --path . --root %s", installPath)
+	if !module.isRelease() {
+		cargoCmd += " --debug"
 	}
 	if len(module.Features) > 0 {
 		cargoCmd += " --features " + strings.Join(module.Features, ",")
@@ -124,16 +124,9 @@ func BuildModule(moduleInterface *C.char, recipeInterface *C.char, arch *C.char)
 		cargoCmd += " " + strings.Join(buildFlags, " ")
 	}
 
-	binarySubdir := "debug"
-	if module.isRelease() {
-		binarySubdir = "release"
-	}
-
-	binaryPath := fmt.Sprintf("target/%s/%s", binarySubdir, module.Name)
-
 	fullCmd := fmt.Sprintf(
-		`cd %s && if ! command -v cargo >/dev/null 2>&1; then echo 'installing rustup...' >&2 && curl https://sh.rustup.rs -sSf | sh -s -- -y && export PATH="$HOME/.cargo/bin:$PATH"; fi && export PATH="$HOME/.cargo/bin:$PATH" && %s && cp %s %s/ && chmod +x %s/%s`,
-		workDir, cargoCmd, binaryPath, installPath, installPath, module.Name,
+		`cd %s && if ! command -v cargo >/dev/null 2>&1; then echo 'installing rustup...' >&2 && curl https://sh.rustup.rs -sSf | sh -s -- -y && export PATH="$HOME/.cargo/bin:$PATH"; fi && export PATH="$HOME/.cargo/bin:$PATH" && %s`,
+		workDir, cargoCmd,
 	)
 
 	return C.CString(fullCmd)
