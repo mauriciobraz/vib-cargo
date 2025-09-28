@@ -10,15 +10,43 @@ import (
 )
 
 type CargoModule struct {
-	Name    string       `json:"name"`
-	Type    string       `json:"type"`
-	Sources []api.Source `json:"sources"`
+	Name        string       `json:"name"`
+	Type        string       `json:"type"`
+	Sources     []api.Source `json:"sources,omitempty"`
+	Source      *api.Source  `json:"source,omitempty"`
+	Release     *bool        `json:"release,omitempty"`
+	NoDefault   bool         `json:"no-default"`
+	InstallPath string       `json:"install-path"`
+	Features    []string     `json:"features"`
+	BuildFlags  []string     `json:"build-flags"`
+}
 
-	Release     bool     `json:"release"`
-	NoDefault   bool     `json:"no-default"`
-	InstallPath string   `json:"install-path"`
-	Features    []string `json:"features"`
-	BuildFlags  []string `json:"build-flags"`
+func (m *CargoModule) getSources() []api.Source {
+	if len(m.Sources) > 0 {
+		return m.Sources
+	}
+
+	if m.Source != nil {
+		return []api.Source{*m.Source}
+	}
+
+	return []api.Source{}
+}
+
+func (m *CargoModule) isRelease() bool {
+	if m.Release == nil {
+		return true
+	}
+
+	return *m.Release
+}
+
+func (m *CargoModule) getBuildFlags() []string {
+	if len(m.BuildFlags) == 0 {
+		return []string{"--locked", "--verbose"}
+	}
+
+	return m.BuildFlags
 }
 
 func fetchSources(sources []api.Source, name string, recipe *api.Recipe) error {
@@ -60,24 +88,29 @@ func BuildModule(moduleInterface *C.char, recipeInterface *C.char, arch *C.char)
 		return C.CString(fmt.Sprintf("ERROR: %s", err.Error()))
 	}
 
-	for _, src := range module.Sources {
+	sources := module.getSources()
+	if len(sources) == 0 {
+		return C.CString("ERROR: No sources specified")
+	}
+
+	for _, src := range sources {
 		if !api.TestArch(src.OnlyArches, C.GoString(arch)) {
 			return C.CString("")
 		}
 	}
 
-	if err := fetchSources(module.Sources, module.Name, recipe); err != nil {
+	if err := fetchSources(sources, module.Name, recipe); err != nil {
 		return C.CString(fmt.Sprintf("ERROR: %s", err.Error()))
 	}
 
-	workDir := fmt.Sprintf("/sources/%s", api.GetSourcePath(module.Sources[0], module.Name))
+	workDir := fmt.Sprintf("/sources/%s", api.GetSourcePath(sources[0], module.Name))
 	installPath := module.InstallPath
 	if installPath == "" {
 		installPath = "/usr/bin"
 	}
 
-	cargoCmd := "cargo build --verbose"
-	if module.Release {
+	cargoCmd := "cargo build"
+	if module.isRelease() {
 		cargoCmd += " --release"
 	}
 	if len(module.Features) > 0 {
@@ -86,12 +119,13 @@ func BuildModule(moduleInterface *C.char, recipeInterface *C.char, arch *C.char)
 	if module.NoDefault {
 		cargoCmd += " --no-default-features"
 	}
-	if len(module.BuildFlags) > 0 {
-		cargoCmd += " " + strings.Join(module.BuildFlags, " ")
+	buildFlags := module.getBuildFlags()
+	if len(buildFlags) > 0 {
+		cargoCmd += " " + strings.Join(buildFlags, " ")
 	}
 
 	binarySubdir := "debug"
-	if module.Release {
+	if module.isRelease() {
 		binarySubdir = "release"
 	}
 
