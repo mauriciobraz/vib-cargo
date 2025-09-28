@@ -132,7 +132,7 @@ func BuildModule(moduleInterface *C.char, recipeInterface *C.char, arch *C.char)
 	binaryPath := fmt.Sprintf("target/%s/%s", binarySubdir, module.Name)
 
 	fullCmd := fmt.Sprintf(
-		"cd %s && if ! command -v cargo >/dev/null 2>&1; then echo 'installing cargo...' >&2 && apt-get update && apt-get install -y cargo rustc; fi && %s && cp %s %s/ && chmod +x %s/%s",
+		`cd %s && if ! command -v cargo >/dev/null 2>&1; then echo 'installing rustup...' >&2 && curl https://sh.rustup.rs -sSf | sh -s -- -y && export PATH="$HOME/.cargo/bin:$PATH"; fi && export PATH="$HOME/.cargo/bin:$PATH" && %s && cp %s %s/ && chmod +x %s/%s`,
 		workDir, cargoCmd, binaryPath, installPath, installPath, module.Name,
 	)
 
